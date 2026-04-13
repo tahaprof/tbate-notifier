@@ -1,12 +1,11 @@
 import requests
 import os
-import re
 from bs4 import BeautifulSoup
 
 SITE_URL = "https://w17.thebeginningaftertheendmanga.com/"
 LAST_CHAPTER_FILE = "last_chapter.txt"
-TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
-TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
+DISCORD_TOKEN = os.environ["DISCORD_TOKEN"]
+DISCORD_CHANNEL_ID = os.environ["DISCORD_CHANNEL_ID"]
 
 def get_latest_chapter():
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
@@ -14,7 +13,6 @@ def get_latest_chapter():
     resp.raise_for_status()
     soup = BeautifulSoup(resp.text, "html.parser")
 
-    # Find all chapter links in the list
     links = soup.select("ul li a[href*='chapter']")
     if not links:
         return None, None
@@ -35,10 +33,14 @@ def save_last_chapter(chapter_title):
     with open(LAST_CHAPTER_FILE, "w") as f:
         f.write(chapter_title)
 
-def send_telegram(message):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
-    requests.post(url, json=payload)
+def send_discord(message):
+    url = f"https://discord.com/api/v10/channels/{DISCORD_CHANNEL_ID}/messages"
+    headers = {
+        "Authorization": f"Bot {DISCORD_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {"content": message}
+    requests.post(url, headers=headers, json=payload)
 
 def main():
     chapter_title, chapter_url = get_latest_chapter()
@@ -51,12 +53,12 @@ def main():
 
     if chapter_title != last:
         msg = (
-            f"📖 <b>New Chapter Alert!</b>\n\n"
-            f"<b>The Beginning After the End</b>\n"
+            f"📖 **New Chapter Alert!**\n\n"
+            f"**The Beginning After the End**\n"
             f"{chapter_title} is out!\n\n"
-            f"🔗 <a href='{chapter_url}'>Read it here</a>"
+            f"🔗 Read it here: {chapter_url}"
         )
-        send_telegram(msg)
+        send_discord(msg)
         save_last_chapter(chapter_title)
         print(f"Notified for {chapter_title}!")
     else:
