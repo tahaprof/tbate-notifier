@@ -47,7 +47,8 @@ def send_discord(message):
         "Content-Type": "application/json"
     }
     payload = {"content": message}
-    requests.post(url, headers=headers, json=payload)
+    response = requests.post(url, headers=headers, json=payload)
+    print(f"Discord response: {response.status_code} - {response.text}")
 
 def main():
     chapter_title, chapter_url = get_latest_chapter()
