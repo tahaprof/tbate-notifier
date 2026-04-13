@@ -1,28 +1,26 @@
 import requests
 import os
+from bs4 import BeautifulSoup
 
-MANGA_ID = "4ada20eb-085a-491a-8c49-477ab42014d7"
+MANGA_URL = "https://manhwaclan.com/manga/the-beginning-after-the-end/"
 LAST_CHAPTER_FILE = "last_chapter.txt"
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
 def get_latest_chapter():
-    url = "https://api.mangadex.org/chapter"
-    params = {
-        "manga": MANGA_ID,
-        "translatedLanguage[]": "en",
-        "order[chapter]": "desc",
-        "limit": 1,
-    }
-    resp = requests.get(url, params=params)
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    resp = requests.get(MANGA_URL, headers=headers)
     resp.raise_for_status()
-    data = resp.json()
-    if not data["data"]:
+    soup = BeautifulSoup(resp.text, "html.parser")
+
+    chapters = soup.select("li.wp-manga-chapter a")
+    if not chapters:
         return None, None
-    chapter = data["data"][0]
-    chapter_num = chapter["attributes"]["chapter"]
-    chapter_id = chapter["id"]
-    return chapter_num, chapter_id
+
+    latest = chapters[0]
+    chapter_title = latest.text.strip()
+    chapter_url = latest["href"]
+    return chapter_title, chapter_url
 
 def read_last_chapter():
     try:
@@ -31,9 +29,9 @@ def read_last_chapter():
     except FileNotFoundError:
         return ""
 
-def save_last_chapter(chapter_num):
+def save_last_chapter(chapter_title):
     with open(LAST_CHAPTER_FILE, "w") as f:
-        f.write(chapter_num)
+        f.write(chapter_title)
 
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -41,25 +39,24 @@ def send_telegram(message):
     requests.post(url, json=payload)
 
 def main():
-    chapter_num, chapter_id = get_latest_chapter()
-    if not chapter_num:
+    chapter_title, chapter_url = get_latest_chapter()
+    if not chapter_title:
         print("No chapters found.")
         return
 
     last = read_last_chapter()
-    print(f"Latest: {chapter_num} | Last seen: {last}")
+    print(f"Latest: {chapter_title} | Last seen: {last}")
 
-    if chapter_num != last:
-        link = f"https://mangadex.org/chapter/{chapter_id}"
+    if chapter_title != last:
         msg = (
             f"📖 <b>New Chapter Alert!</b>\n\n"
             f"<b>The Beginning After the End</b>\n"
-            f"Chapter <b>{chapter_num}</b> is out!\n\n"
-            f"🔗 <a href='{link}'>Read it on MangaDex</a>"
+            f"{chapter_title} is out!\n\n"
+            f"🔗 <a href='{chapter_url}'>Read it on ManhwaClan</a>"
         )
         send_telegram(msg)
-        save_last_chapter(chapter_num)
-        print(f"Notified for chapter {chapter_num}!")
+        save_last_chapter(chapter_title)
+        print(f"Notified for {chapter_title}!")
     else:
         print("No new chapter.")
 
