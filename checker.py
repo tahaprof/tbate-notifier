@@ -4,6 +4,8 @@ from bs4 import BeautifulSoup
 
 SITE_URL = "https://w17.thebeginningaftertheendmanga.com/"
 LAST_CHAPTER_FILE = "last_chapter.txt"
+TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
+TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 DISCORD_TOKEN = os.environ["DISCORD_TOKEN"]
 DISCORD_CHANNEL_ID = os.environ["DISCORD_CHANNEL_ID"]
 
@@ -33,6 +35,11 @@ def save_last_chapter(chapter_title):
     with open(LAST_CHAPTER_FILE, "w") as f:
         f.write(chapter_title)
 
+def send_telegram(message):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
+    requests.post(url, json=payload)
+
 def send_discord(message):
     url = f"https://discord.com/api/v10/channels/{DISCORD_CHANNEL_ID}/messages"
     headers = {
@@ -52,13 +59,20 @@ def main():
     print(f"Latest: {chapter_title} | Last seen: {last}")
 
     if chapter_title != last:
-        msg = (
+        telegram_msg = (
+            f"📖 <b>New Chapter Alert!</b>\n\n"
+            f"<b>The Beginning After the End</b>\n"
+            f"{chapter_title} is out!\n\n"
+            f"🔗 <a href='{chapter_url}'>Read it here</a>"
+        )
+        discord_msg = (
             f"📖 **New Chapter Alert!**\n\n"
             f"**The Beginning After the End**\n"
             f"{chapter_title} is out!\n\n"
             f"🔗 Read it here: {chapter_url}"
         )
-        send_discord(msg)
+        send_telegram(telegram_msg)
+        send_discord(discord_msg)
         save_last_chapter(chapter_title)
         print(f"Notified for {chapter_title}!")
     else:
